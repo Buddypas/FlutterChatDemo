@@ -1,4 +1,4 @@
-#Mon Mar 29 22:27:02 CEST 2021
+#Mon Mar 29 23:24:22 CEST 2021
 base.0=/home/buddypas/Documents/courses/flutter/projects/chat_app/build/app/intermediates/dex/debug/mergeDexDebug/out/classes.dex
 renamed.0=classes.dex
 path.0=classes.dex

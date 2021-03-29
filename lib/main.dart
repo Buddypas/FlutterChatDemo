@@ -1,8 +1,21 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 void main() {
   runApp(ChatApp());
 }
+
+final ThemeData iOSTheme = ThemeData(
+  primarySwatch: Colors.orange,
+  primaryColor: Colors.grey[100],
+  primaryColorBrightness: Brightness.light,
+);
+
+final ThemeData defaultTheme = ThemeData(
+  primarySwatch: Colors.purple,
+  accentColor: Colors.orangeAccent[400],
+);
 
 class ChatApp extends StatelessWidget {
   // This widget is the root of your application.
@@ -12,14 +25,9 @@ class ChatApp extends StatelessWidget {
 
     return MaterialApp(
         title: appTitle,
-        theme: ThemeData(
-          // App theme
-          primarySwatch: Colors.blue,
-          // This makes the visual density adapt to the platform that you run
-          // the app on. For desktop platforms, the controls will be smaller and
-          // closer together (more dense) than on mobile platforms.
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-        ),
+        theme: defaultTargetPlatform == TargetPlatform.iOS
+            ? iOSTheme
+            : defaultTheme,
         home: Scaffold(
           appBar: AppBar(
             title: Text(appTitle),
@@ -58,10 +66,11 @@ class _LoginPageState extends State<LoginPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Container(
+            alignment: Alignment.center,
             padding: EdgeInsets.all(16.0),
             child: Text(
               "Welcome",
-              style: TextStyle(fontSize: 16, fontFamily: 'Roboto'),
+              style: Theme.of(context).textTheme.headline2,
             ),
           ),
           Container(
@@ -107,14 +116,29 @@ class ChatPage extends StatefulWidget {
   ChatPage({Key key, @required this.username}) : super(key: key);
 
   @override
-  _ChatPageState createState() => _ChatPageState();
+  _ChatPageState createState() => _ChatPageState(username: username);
 }
 
 class _ChatPageState extends State<ChatPage> {
+  _ChatPageState({this.username});
+
+  final String username;
+  final List<ChatMessage> _messages = [];
   final _messageController = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+  bool _isComposing = false;
 
   void _handleSubmitted(String text) {
     _messageController.clear();
+    ChatMessage message = ChatMessage(
+      username: username,
+      text: text,
+    );
+    setState(() {
+      _isComposing = false;
+      _messages.insert(0, message);
+    });
+    _focusNode.requestFocus();
   }
 
   Widget _buildTextComposer() {
@@ -127,16 +151,33 @@ class _ChatPageState extends State<ChatPage> {
             Flexible(
               child: TextField(
                 controller: _messageController,
-                onSubmitted: _handleSubmitted,
+                onSubmitted: _isComposing ? _handleSubmitted : null,
+                onChanged: (String text) {
+                  setState(() {
+                    _isComposing = text.length > 0;
+                  });
+                },
+                focusNode: _focusNode,
                 decoration:
                     InputDecoration.collapsed(hintText: 'Send a message'),
               ),
             ),
             Container(
                 margin: EdgeInsets.symmetric(horizontal: 4.0),
-                child: IconButton(
-                    icon: const Icon(Icons.send),
-                    onPressed: () => _handleSubmitted(_messageController.text)))
+                child: Theme.of(context).platform == TargetPlatform.iOS
+                    ? CupertinoButton(
+                        child: Text('Send'),
+                        onPressed: _isComposing
+                            ? () => _handleSubmitted(_messageController.text)
+                            : null,
+                      )
+                    : IconButton(
+                        // MODIFIED
+                        icon: const Icon(Icons.send),
+                        onPressed: _isComposing
+                            ? () => _handleSubmitted(_messageController.text)
+                            : null,
+                      ))
           ],
         ),
       ),
@@ -146,8 +187,62 @@ class _ChatPageState extends State<ChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Chat Page')),
-      body: _buildTextComposer(),
+      appBar: AppBar(
+          title: Text('Hello $username'),
+          elevation:
+              Theme.of(context).platform == TargetPlatform.iOS ? 0.0 : 4.0),
+      body: Column(
+        children: [
+          Flexible(
+            child: ListView.builder(
+              padding: EdgeInsets.all(8.0),
+              reverse: true,
+              itemBuilder: (_, int index) => _messages[index],
+              itemCount: _messages.length,
+            ),
+          ),
+          Divider(height: 1.0),
+          Container(
+            decoration: BoxDecoration(color: Theme.of(context).cardColor),
+            child: _buildTextComposer(),
+          ),
+        ],
+      ),
     );
+  }
+}
+
+class ChatMessage extends StatelessWidget {
+  final String text;
+  String username;
+
+  ChatMessage({@required this.username, @required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+        margin: EdgeInsets.symmetric(vertical: 10.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(right: 16.0),
+              child: CircleAvatar(
+                  child: Text(username.characters
+                      .characterAt(0)
+                      .toUpperCase()
+                      .toString())),
+            ),
+            Expanded(
+              child: Column(children: [
+                Text(username, style: Theme.of(context).textTheme.headline4),
+                Container(
+                  margin: EdgeInsets.only(top: 5.0),
+                  child: Text(text),
+                )
+              ], crossAxisAlignment: CrossAxisAlignment.start),
+            )
+          ],
+        ));
   }
 }
